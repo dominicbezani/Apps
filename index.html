@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Windows Terminal</title>
+
+<style>
+/* ⭐ FULL RESET – keine weißen Ränder mehr */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #000000;
+  overflow: hidden;
+  font-family: Consolas, monospace;
+}
+
+/* optional stabiler Layout Fix */
+* {
+  box-sizing: border-box;
+}
+
+.window {
+  width: 100%;
+  height: 100%;
+  background: #000000;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top Bar komplett schwarz */
+.titlebar {
+  height: 32px;
+  background: #000000;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+/* Terminal Fläche */
+.terminal {
+  flex: 1;
+  background: #000000;
+  color: #ffffff;
+  padding: 10px;
+  overflow-y: auto;
+  font-size: 14px;
+}
+
+/* Eingabe */
+.input-line {
+  display: flex;
+  margin-top: 10px;
+}
+
+.prompt {
+  color: #ffffff;
+  margin-right: 5px;
+}
+
+input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-family: Consolas, monospace;
+  font-size: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="window">
+  <div class="titlebar">Windows Terminal</div>
+
+  <div class="terminal">
+
+    <div>
+      Microsoft Windows [Version 11.0.22631.0]<br>
+      (c) Microsoft Corporation. Alle Rechte vorbehalten.
+    </div>
+
+    <br>
+
+    <div id="output"></div>
+
+    <div class="input-line">
+      <span class="prompt">C:\Users\User&gt;</span>
+      <input id="cmdInput" autofocus />
+    </div>
+
+  </div>
+</div>
+
+<script>
+const input = document.getElementById("cmdInput");
+const output = document.getElementById("output");
+
+let currentColor = "#ffffff";
+
+const colors = {
+  white: "#ffffff",
+  green: "#00ff9d",
+  red: "#ff4d4d",
+  blue: "#4da6ff",
+  yellow: "#ffd633",
+  purple: "#c266ff"
+};
+
+input.addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    handleCommand(input.value.trim());
+    input.value = "";
+  }
+});
+
+function print(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  div.style.color = currentColor;
+  output.appendChild(div);
+  output.scrollTop = output.scrollHeight;
+}
+
+function handleCommand(cmd) {
+
+  const line = document.createElement("div");
+  line.innerHTML = `<span style="color:#ffffff">C:\\Users\\User&gt;</span> ${cmd}`;
+  output.appendChild(line);
+
+  const parts = cmd.toLowerCase().split(" ");
+
+  // COLOR SYSTEM
+  if (parts[0] === "color") {
+    if (colors[parts[1]]) {
+      currentColor = colors[parts[1]];
+      print("Farbe geändert zu " + parts[1]);
+    } else {
+      print("Unbekannte Farbe!");
+    }
+    return;
+  }
+
+  switch (parts[0]) {
+
+    case "help":
+      print("Befehle: help, clear, hacker, color <farbe>, time, date");
+      break;
+
+    case "clear":
+      output.innerHTML = "";
+      break;
+
+    case "hacker":
+      print("HACKING STARTET...");
+      let i = 0;
+      const interval = setInterval(() => {
+        print("0101 " + Math.random().toString(2).substring(2, 10));
+        i++;
+        if (i > 20) clearInterval(interval);
+      }, 70);
+      break;
+
+    case "time":
+      print("Aktuelle Uhrzeit: " + new Date().toLocaleTimeString());
+      break;
+
+    case "date":
+      print("Aktuelles Datum: " + new Date().toLocaleDateString());
+      break;
+
+    default:
+      print("Unbekannter Befehl: " + cmd);
+  }
+}
+</script>
+
+</body>
+</html>
