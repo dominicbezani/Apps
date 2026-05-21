@@ -5,7 +5,6 @@
 <title>Windows Terminal</title>
 
 <style>
-/* ⭐ FULL RESET – keine weißen Ränder mehr */
 html, body {
   margin: 0;
   padding: 0;
@@ -16,7 +15,6 @@ html, body {
   font-family: Consolas, monospace;
 }
 
-/* optional stabiler Layout Fix */
 * {
   box-sizing: border-box;
 }
@@ -29,7 +27,6 @@ html, body {
   flex-direction: column;
 }
 
-/* Top Bar komplett schwarz */
 .titlebar {
   height: 32px;
   background: #000000;
@@ -40,7 +37,6 @@ html, body {
   font-size: 13px;
 }
 
-/* Terminal Fläche */
 .terminal {
   flex: 1;
   background: #000000;
@@ -50,7 +46,6 @@ html, body {
   font-size: 14px;
 }
 
-/* Eingabe */
 .input-line {
   display: flex;
   margin-top: 10px;
@@ -149,7 +144,7 @@ function handleCommand(cmd) {
   switch (parts[0]) {
 
     case "help":
-      print("Befehle: help, clear, hacker, color <farbe>, time, date");
+      print("Befehle: help, clear, hacker, color <farbe>, time, date, youtube");
       break;
 
     case "clear":
@@ -174,6 +169,11 @@ function handleCommand(cmd) {
       print("Aktuelles Datum: " + new Date().toLocaleDateString());
       break;
 
+    case "youtube":
+      window.open("https://www.youtube.com/@MrKeksTV", "_blank");
+      print("YouTube Kanal wird geöffnet...");
+      break;
+
     default:
       print("Unbekannter Befehl: " + cmd);
   }
@@ -181,4 +181,5 @@ function handleCommand(cmd) {
 </script>
 
 </body>
+</html>
 </html>
