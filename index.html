@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P2P Gruppenchat</title>
+
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:Arial,sans-serif;
+}
+
+body{
+  background:#111b21;
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.app{
+  width:95%;
+  max-width:1100px;
+  height:90vh;
+  background:#202c33;
+  border-radius:18px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+
+.topbar{
+  height:70px;
+  background:#2a3942;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 15px;
+  color:#e9edef;
+}
+
+.left{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.avatar{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  background:#3b4a54;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:white;
+  font-weight:bold;
+  overflow:hidden;
+}
+
+.controls{
+  display:flex;
+  gap:10px;
+}
+
+input{
+  padding:10px;
+  border:none;
+  border-radius:10px;
+  background:#202c33;
+  color:#e9edef;
+  outline:none;
+}
+
+button{
+  padding:10px 14px;
+  border:none;
+  border-radius:10px;
+  background:#25D366;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.messages{
+  flex:1;
+  padding:15px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.msg{
+  max-width:70%;
+  padding:10px 14px;
+  border-radius:12px;
+  color:#e9edef;
+  word-wrap:break-word;
+}
+
+.me{
+  align-self:flex-end;
+  background:#25D366;
+  color:#111;
+}
+
+.other{
+  align-self:flex-start;
+  background:#2a3942;
+}
+
+#typing{
+  height:20px;
+  font-size:12px;
+  padding:0 15px;
+  color:#aebac1;
+  font-style:italic;
+}
+
+.input-area{
+  display:flex;
+  gap:10px;
+  padding:10px;
+  background:#2a3942;
+}
+
+#msgInput{
+  flex:1;
+  padding:12px;
+}
+
+/* POPUP */
+.popup{
+  position:fixed;
+  top:20px;
+  left:50%;
+  transform:translateX(-50%) translateY(-20px);
+  padding:12px 18px;
+  border-radius:10px;
+  font-weight:bold;
+  z-index:9999;
+  box-shadow:0 10px 25px rgba(0,0,0,0.3);
+
+  opacity:0;
+  animation:popupIn 0.35s ease forwards, popupOut 0.35s ease forwards 1.7s;
+}
+
+.popup.success{
+  background:#25D366;
+  color:#111;
+}
+
+.popup.error{
+  background:#ff3b30;
+  color:white;
+}
+
+@keyframes popupIn{
+  from{
+    opacity:0;
+    transform:translateX(-50%) translateY(-20px) scale(0.95);
+  }
+  to{
+    opacity:1;
+    transform:translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+@keyframes popupOut{
+  from{
+    opacity:1;
+    transform:translateX(-50%) translateY(0) scale(1);
+  }
+  to{
+    opacity:0;
+    transform:translateX(-50%) translateY(-20px) scale(0.95);
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <div class="topbar">
+
+    <div class="left">
+      <div class="avatar" id="myAvatar">U</div>
+
+      <div>
+        <div id="usernameBox">User</div>
+        <small id="idBox" style="color:#aebac1;"></small>
+      </div>
+    </div>
+
+    <div class="controls">
+      <input id="peerInput" placeholder="ID">
+      <button onclick="connectPeer()">Verbinden</button>
+    </div>
+
+  </div>
+
+  <div class="messages" id="messages"></div>
+  <div id="typing"></div>
+
+  <div class="input-area">
+    <input id="msgInput" placeholder="Nachricht schreiben...">
+    <button onclick="sendMsg()">Senden</button>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+<script>
+let username = "";
+
+while(!username){
+  username = prompt("Dein Name:")?.trim();
+}
+
+username =
+  username.charAt(0).toUpperCase() +
+  username.slice(1);
+
+/* RANDOM ID */
+function generateId(){
+  return Math.random().toString(36).substring(2, 10);
+}
+
+const myId = generateId();
+const peer = new Peer(myId);
+
+/* 👥 GROUP CHAT */
+let connections = [];
+let connectedIds = new Set();
+
+const msgBox = document.getElementById("messages");
+const usernameBox = document.getElementById("usernameBox");
+const avatar = document.getElementById("myAvatar");
+
+/* UI */
+usernameBox.innerText = username;
+
+document.getElementById("idBox").innerText =
+  "ID: " + myId;
+
+/* Avatar */
+const savedAvatar =
+  localStorage.getItem("avatar");
+
+if(savedAvatar){
+
+  avatar.style.backgroundImage =
+    `url(${savedAvatar})`;
+
+  avatar.style.backgroundSize = "cover";
+  avatar.style.backgroundPosition = "center";
+  avatar.innerText = "";
+
+}else{
+  avatar.innerText = username[0];
+}
+
+/* POPUP */
+function showPopup(text, type = "success"){
+
+  const div = document.createElement("div");
+
+  div.className =
+    "popup " +
+    (type === "error"
+      ? "error"
+      : "success");
+
+  div.innerText = text;
+
+  document.body.appendChild(div);
+
+  setTimeout(()=>{
+    div.remove();
+  }, 2100);
+}
+
+peer.on("open", id=>{
+  console.log("Deine ID:", id);
+});
+
+/* EINGEHENDE VERBINDUNG */
+peer.on("connection", c=>{
+  setupConnOnce(c);
+});
+
+/* VERBINDEN */
+function connectPeer(){
+
+  const id =
+    document.getElementById("peerInput")
+    .value
+    .trim();
+
+  if(!id) return;
+
+  const c = peer.connect(id);
+
+  let connected = false;
+
+  c.on("open", ()=>{
+
+    connected = true;
+
+    setupConnOnce(c);
+
+    showPopup(
+      "Erfolgreich verbunden!",
+      "success"
+    );
+  });
+
+  setTimeout(()=>{
+
+    if(!connected){
+
+      showPopup(
+        "Verbindung fehlgeschlagen!",
+        "error"
+      );
+
+      c.close();
+    }
+
+  }, 4000);
+}
+
+/* 👥 GRUPPENCHAT SYSTEM */
+function setupConnOnce(c){
+
+  if(connectedIds.has(c.peer)) return;
+
+  connectedIds.add(c.peer);
+
+  connections.push(c);
+
+  showPopup("User beigetreten");
+
+  c.on("data", data=>{
+
+    /* typing */
+    if(data.typing !== undefined){
+
+      document.getElementById("typing").innerText =
+        data.typing
+          ? (data.user + " schreibt...")
+          : "";
+
+      return;
+    }
+
+    /* duplicate message block */
+    if(data.msgId){
+
+      if(window.seenMessages?.has(data.msgId)){
+        return;
+      }
+
+      if(!window.seenMessages){
+        window.seenMessages = new Set();
+      }
+
+      window.seenMessages.add(data.msgId);
+    }
+
+    /* anzeigen */
+    addMsg(
+      data.user,
+      data.text,
+      "other"
+    );
+
+    /* weiterleiten */
+    connections.forEach(other=>{
+
+      if(
+        other !== c &&
+        other.open
+      ){
+        other.send(data);
+      }
+
+    });
+
+  });
+
+  c.on("close", ()=>{
+
+    connections =
+      connections.filter(x => x !== c);
+
+    connectedIds.delete(c.peer);
+  });
+}
+
+/* SENDEN */
+function sendMsg(){
+
+  const input =
+    document.getElementById("msgInput");
+
+  const text =
+    input.value.trim();
+
+  if(!text) return;
+
+  const data = {
+    user: username,
+    text: text,
+    msgId:
+      Date.now() +
+      Math.random()
+  };
+
+  /* local speichern */
+  if(!window.seenMessages){
+    window.seenMessages = new Set();
+  }
+
+  window.seenMessages.add(data.msgId);
+
+  addMsg(
+    username,
+    text,
+    "me"
+  );
+
+  /* an alle */
+  connections.forEach(c=>{
+
+    if(c.open){
+      c.send(data);
+    }
+
+  });
+
+  input.value = "";
+}
+
+/* MESSAGE UI */
+function addMsg(u,t,type){
+
+  const div =
+    document.createElement("div");
+
+  div.className =
+    "msg " + type;
+
+  div.innerHTML =
+    "<b>" + u + "</b><br>" + t;
+
+  msgBox.appendChild(div);
+
+  msgBox.scrollTop =
+    msgBox.scrollHeight;
+}
+
+/* TYPING */
+document
+.getElementById("msgInput")
+.addEventListener("input", ()=>{
+
+  connections.forEach(c=>{
+
+    c.send({
+      typing:true,
+      user:username
+    });
+
+  });
+
+  clearTimeout(window._t);
+
+  window._t = setTimeout(()=>{
+
+    connections.forEach(c=>{
+
+      c.send({
+        typing:false,
+        user:username
+      });
+
+    });
+
+  }, 800);
+
+});
+</script>
+
+</body>
+</html>
