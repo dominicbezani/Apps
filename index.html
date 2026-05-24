@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P2P Gruppenchat</title>
+
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:"Segoe UI",Arial,sans-serif;
+}
+
+body{
+  background:#d9dbd5;
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+/* APP */
+.app{
+  width:95%;
+  max-width:1100px;
+  height:92vh;
+  background:white;
+  border-radius:18px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  box-shadow:0 8px 35px rgba(0,0,0,0.15);
+}
+
+/* TOPBAR */
+.topbar{
+  height:72px;
+  background:#25D366;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 18px;
+  border-bottom:1px solid #dfe5e7;
+}
+
+.left{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.avatar{
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  background:white;
+  color:black;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+  font-size:18px;
+  overflow:hidden;
+}
+
+#usernameBox{
+  color:black;
+  font-size:16px;
+  font-weight:700;
+}
+
+#idBox{
+  color:#1f1f1f !important;
+  font-size:12px;
+}
+
+/* CONTROLS */
+.controls{
+  display:flex;
+  gap:10px;
+}
+
+/* INPUTS */
+input{
+  padding:12px 14px;
+  border:none;
+  border-radius:12px;
+  background:#f0f2f5;
+  color:black;
+  outline:none;
+  font-size:14px;
+}
+
+input::placeholder{
+  color:#666;
+}
+
+/* BUTTON */
+button{
+  padding:12px 16px;
+  border:none;
+  border-radius:12px;
+  background:white;
+  color:#25D366;
+  font-weight:700;
+  cursor:pointer;
+  transition:0.2s;
+}
+
+button:hover{
+  transform:scale(1.03);
+}
+
+#clearBtn{
+  background:white;
+  color:#25D366;
+  padding:8px 14px;
+  border-radius:10px;
+  font-size:13px;
+  font-weight:700;
+  margin-left:8px;
+}
+
+#clearBtn:hover{
+  transform:scale(1.05);
+}
+
+/* MESSAGES */
+.messages{
+  flex:1;
+  padding:20px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+
+  background:
+    linear-gradient(rgba(255,255,255,0.92),
+    rgba(255,255,255,0.92)),
+    url("https://i.imgur.com/3QZQZ9T.png");
+
+  background-size:260px;
+}
+
+/* MESSAGE */
+.msg{
+  max-width:70%;
+  padding:10px 14px 18px 14px;
+  border-radius:14px;
+  position:relative;
+  font-size:14px;
+  line-height:1.4;
+  word-wrap:break-word;
+  animation:fadeIn 0.15s ease;
+}
+
+/* OWN */
+.me{
+  align-self:flex-end;
+  background:#dcf8c6;
+  color:black;
+  border-top-right-radius:4px;
+}
+
+/* OTHER */
+.other{
+  align-self:flex-start;
+  background:white;
+  color:black;
+  border:1px solid #e6e6e6;
+  border-top-left-radius:4px;
+}
+
+/* USERNAME */
+.msg b{
+  display:block;
+  margin-bottom:3px;
+  color:#128c7e;
+  font-size:13px;
+}
+
+/* TIME */
+.msg::after{
+  content:attr(data-time);
+  position:absolute;
+  bottom:5px;
+  right:10px;
+  font-size:11px;
+  color:#666;
+}
+
+/* TYPING */
+#typing{
+  min-height:24px;
+  padding:4px 16px;
+  font-size:13px;
+  color:#666;
+  font-style:italic;
+  background:white;
+}
+
+/* INPUT AREA */
+.input-area{
+  display:flex;
+  gap:10px;
+  padding:12px;
+  background:#f0f2f5;
+  border-top:1px solid #ddd;
+}
+
+#msgInput{
+  flex:1;
+  border-radius:999px;
+  padding:14px 18px;
+  background:white;
+}
+
+/* POPUP */
+.popup{
+  position:fixed;
+  top:20px;
+  left:50%;
+  transform:translateX(-50%);
+  padding:12px 20px;
+  border-radius:12px;
+  font-weight:bold;
+  z-index:9999;
+  box-shadow:0 8px 25px rgba(0,0,0,0.2);
+  animation:popupAnim 2.1s forwards;
+}
+
+.popup.success{
+  background:#25D366;
+  color:black;
+}
+
+.popup.error{
+  background:#ff3b30;
+  color:white;
+}
+
+@keyframes popupAnim{
+  0%{
+    opacity:0;
+    transform:translateX(-50%) translateY(-15px);
+  }
+  10%{
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+  }
+  85%{
+    opacity:1;
+  }
+  100%{
+    opacity:0;
+    transform:translateX(-50%) translateY(-15px);
+  }
+}
+
+@keyframes fadeIn{
+  from{
+    opacity:0;
+    transform:translateY(5px);
+  }
+  to{
+    opacity:1;
+    transform:translateY(0);
+  }
+}
+
+/* MOBILE */
+@media(max-width:700px){
+
+  .controls input{
+    width:120px;
+  }
+
+  .msg{
+    max-width:85%;
+  }
+
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <div class="topbar">
+
+    <div class="left">
+
+  <div class="avatar" id="myAvatar">U</div>
+
+  <div>
+    <div id="usernameBox">User</div>
+    <small id="idBox" style="color:#1f1f1f;"></small>
+  </div>
+
+  <!-- CHAT CLEAR -->
+  <button id="clearBtn" onclick="clearChat()">
+    Chat leeren
+  </button>
+
+</div>
+
+    <div class="controls">
+      <input id="peerInput" placeholder="ID eingeben">
+      <button onclick="connectPeer()">Verbinden</button>
+    </div>
+
+  </div>
+
+  <div class="messages" id="messages"></div>
+  <div id="typing"></div>
+
+  <div class="input-area">
+    <input id="msgInput" placeholder="Nachricht schreiben...">
+    <button onclick="sendMsg()">Senden</button>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+<script>
+let username = "";
+
+while(!username){
+  username = prompt("Dein Name:")?.trim();
+}
+
+username =
+  username.charAt(0).toUpperCase() +
+  username.slice(1);
+
+/* RANDOM ID */
+function generateId(){
+  return Math.random().toString(36).substring(2, 10);
+}
+
+const myId = generateId();
+const peer = new Peer(myId);
+
+/* 👥 GROUP CHAT */
+let connections = [];
+let connectedIds = new Set();
+
+const msgBox = document.getElementById("messages");
+const usernameBox = document.getElementById("usernameBox");
+const avatar = document.getElementById("myAvatar");
+
+/* UI */
+usernameBox.innerText = username;
+
+document.getElementById("idBox").innerText =
+  "ID: " + myId;
+
+/* Avatar */
+const savedAvatar =
+  localStorage.getItem("avatar");
+
+if(savedAvatar){
+
+  avatar.style.backgroundImage =
+    `url(${savedAvatar})`;
+
+  avatar.style.backgroundSize = "cover";
+  avatar.style.backgroundPosition = "center";
+  avatar.innerText = "";
+
+}else{
+  avatar.innerText = username[0];
+}
+
+/* POPUP */
+function showPopup(text, type = "success"){
+
+  const div = document.createElement("div");
+
+  div.className =
+    "popup " +
+    (type === "error"
+      ? "error"
+      : "success");
+
+  div.innerText = text;
+
+  document.body.appendChild(div);
+
+  setTimeout(()=>{
+    div.remove();
+  }, 2100);
+}
+
+peer.on("open", id=>{
+  console.log("Deine ID:", id);
+});
+
+/* EINGEHENDE VERBINDUNG */
+peer.on("connection", c=>{
+  setupConnOnce(c);
+});
+
+/* VERBINDEN */
+function connectPeer(){
+
+  const id =
+    document.getElementById("peerInput")
+    .value
+    .trim();
+
+  if(!id) return;
+
+  const c = peer.connect(id);
+
+  let connected = false;
+
+  c.on("open", ()=>{
+
+    connected = true;
+
+    setupConnOnce(c);
+
+    showPopup(
+      "Erfolgreich verbunden!",
+      "success"
+    );
+  });
+
+  setTimeout(()=>{
+
+    if(!connected){
+
+      showPopup(
+        "Verbindung fehlgeschlagen!",
+        "error"
+      );
+
+      c.close();
+    }
+
+  }, 4000);
+}
+
+/* 👥 GRUPPENCHAT SYSTEM */
+function setupConnOnce(c){
+
+  if(connectedIds.has(c.peer)) return;
+
+  connectedIds.add(c.peer);
+
+  connections.push(c);
+
+  showPopup("User beigetreten");
+
+  c.on("data", data=>{
+
+    /* typing */
+    if(data.typing !== undefined){
+
+      document.getElementById("typing").innerText =
+        data.typing
+          ? (data.user + " schreibt...")
+          : "";
+
+      return;
+    }
+
+    /* duplicate message block */
+    if(data.msgId){
+
+      if(window.seenMessages?.has(data.msgId)){
+        return;
+      }
+
+      if(!window.seenMessages){
+        window.seenMessages = new Set();
+      }
+
+      window.seenMessages.add(data.msgId);
+    }
+
+    /* anzeigen */
+    addMsg(
+      data.user,
+      data.text,
+      "other"
+    );
+
+    /* weiterleiten */
+    connections.forEach(other=>{
+
+      if(
+        other !== c &&
+        other.open
+      ){
+        other.send(data);
+      }
+
+    });
+
+  });
+
+  c.on("close", ()=>{
+
+    connections =
+      connections.filter(x => x !== c);
+
+    connectedIds.delete(c.peer);
+  });
+}
+
+/* SENDEN */
+function sendMsg(){
+
+  const input =
+    document.getElementById("msgInput");
+
+  const text =
+    input.value.trim();
+
+  if(!text) return;
+
+  const data = {
+    user: username,
+    text: text,
+    msgId:
+      Date.now() +
+      Math.random()
+  };
+
+  /* local speichern */
+  if(!window.seenMessages){
+    window.seenMessages = new Set();
+  }
+
+  window.seenMessages.add(data.msgId);
+
+  addMsg(
+    username,
+    text,
+    "me"
+  );
+
+  /* an alle */
+  connections.forEach(c=>{
+
+    if(c.open){
+      c.send(data);
+    }
+
+  });
+
+  input.value = "";
+}
+
+/* MESSAGE UI */
+function addMsg(u,t,type){
+
+  const div =
+    document.createElement("div");
+
+  div.className =
+    "msg " + type;
+
+  const now = new Date();
+
+  const time =
+    now.getHours().toString().padStart(2,"0")
+    + ":" +
+    now.getMinutes().toString().padStart(2,"0");
+
+  div.setAttribute("data-time", time);
+
+  div.innerHTML =
+    "<b>" + u + "</b>" + t;
+
+  msgBox.appendChild(div);
+
+  msgBox.scrollTop =
+    msgBox.scrollHeight;
+}
+
+/* TYPING */
+document
+.getElementById("msgInput")
+.addEventListener("input", ()=>{
+
+  connections.forEach(c=>{
+
+    c.send({
+      typing:true,
+      user:username
+    });
+
+  });
+
+  clearTimeout(window._t);
+
+  window._t = setTimeout(()=>{
+
+    connections.forEach(c=>{
+
+      c.send({
+        typing:false,
+        user:username
+      });
+
+    });
+
+  }, 800);
+
+});
+
+/* CHAT LEEREN */
+function clearChat(){
+
+  const ok =
+    confirm("Chat wirklich löschen?");
+
+  if(!ok) return;
+
+  msgBox.innerHTML = "";
+
+  showPopup(
+    "Chat gelöscht",
+    "success"
+  );
+}
+</script>
+
+</body>
+</html>
