@@ -2,300 +2,322 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Horror Tablet Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Granny's Asylum</title>
     <style>
-        * {
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-user-select: none;
-            margin: 0;
-            padding: 0;
-        }
-        body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #050505;
-            font-family: 'Courier New', Courier, monospace;
-        }
-        #gameCanvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-            background: #000;
-        }
-        /* UI Overlays */
-        #startScreen {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: #8b0000;
-            z-index: 10;
-            text-align: center;
-            padding: 20px;
-        }
-        h1 { font-size: 3rem; margin-bottom: 20px; letter-spacing: 5px; text-shadow: 0 0 10px #f00; }
-        p { color: #aaa; margin-bottom: 30px; font-size: 1.2rem; }
-        button {
-            padding: 15px 40px;
-            background: #550000;
-            color: #fff;
-            border: 2px solid #8b0000;
-            font-size: 1.5rem;
-            cursor: pointer;
-            border-radius: 5px;
-            box-shadow: 0 0 15px #f00;
-        }
-        /* Virtueller Joystick */
-        #joystickContainer {
-            position: absolute;
-            bottom: 50px;
-            left: 50px;
-            width: 120px;
-            height: 120px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 5;
-            touch-action: none;
-        }
-        #joystickKnob {
-            width: 50px;
-            height: 50px;
-            background: rgba(139, 0, 0, 0.6);
-            border: 2px solid #8b0000;
-            border-radius: 50%;
-            position: absolute;
-            box-shadow: 0 0 10px #f00;
-        }
-        #score {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #8b0000;
-            font-size: 1.5rem;
-            font-weight: bold;
-            z-index: 5;
-        }
+        body, html { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; background: #050505; font-family: sans-serif; }
+        #canvas3d { width: 100%; height: 100%; display: block; }
+        #ui { position: absolute; top: 20px; left: 20px; color: #ff3333; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px #000; pointer-events: none; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; background: rgba(255,255,255,0.3); transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none; }
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.85); color: #fff; z-index: 10; text-align: center; }
+        h1 { font-size: 50px; color: #8b0000; margin-bottom: 10px; letter-spacing: 5px; text-shadow: 0 0 10px #f00; }
+        p { font-size: 18px; max-width: 500px; line-height: 1.5; color: #bbb; }
+        button { padding: 15px 40px; font-size: 22px; background: #8b0000; color: white; border: none; cursor: pointer; border-radius: 5px; margin-top: 20px; transition: 0.3s; box-shadow: 0 0 15px rgba(255,0,0,0.4); }
+        button:hover { background: #ff0000; box-shadow: 0 0 25px #ff0000; }
+        #flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; z-index: 5; }
+        .hidden { display: none !important; }
     </style>
+    <!-- Three.js für die 3D-Grafik -->
+    <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
-    <div id="startScreen">
-        <h1>DIE DUNKELHEIT</h1>
-        <p>Nutze den Joystick unten links zum Bewegen.<br>Weiche dem roten Geist aus und sammle die weißen Seelenfragmente.</p>
-        <button id="startButton">STARTEN</button>
+    <div id="ui">Aufgabe: Finde den Schlüssel & entkomme!</div>
+    <div id="crosshair"></div>
+    <div id="flash"></div>
+
+    <!-- Startbildschirm -->
+    <div id="startScreen" class="screen">
+        <h1>GRANNY'S ASYLUM</h1>
+        <p>Bewege dich mit <b>WASD</b> und schaue dich mit der <b>Maus</b> um.<br>
+           Finde den goldenen Schlüssel und entziehe dich Grannys Fängen.<br>
+           Berührt sie dich, bist du tot.</p>
+        <button id="startBtn">ÜBERLEBEN STARTEN</button>
     </div>
 
-    <div id="score">Fragmente: 0</div>
-    <div id="joystickContainer">
-        <div id="joystickKnob"></div>
+    <!-- Game Over Bildschirm -->
+    <div id="gameOverScreen" class="screen hidden">
+        <h1 style="text-shadow: 0 0 20px #f00;">DU WURDEST GEFANGEN</h1>
+        <p>Granny hat dich im Dunkeln erwischt...</p>
+        <button onclick="location.reload()">ERNEUT VERSUCHEN</button>
     </div>
 
-    <canvas id="gameCanvas"></canvas>
+    <!-- Gewonnen Bildschirm -->
+    <div id="winScreen" class="screen hidden">
+        <h1 style="color: #00ff00; text-shadow: 0 0 20px #0f0;">GEFLOHEN!</h1>
+        <p>Du hast den Schlüssel gefunden und konntest entkommen.</p>
+        <button onclick="location.reload()">NOCHMAL SPIELEN</button>
+    </div>
+
+    <canvas id="canvas3d"></canvas>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const startScreen = document.getElementById('startScreen');
-        const startButton = document.getElementById('startButton');
-        const scoreDisplay = document.getElementById('score');
-        
-        // Canvas Größe anpassen
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+        // --- SPIEL-KONFIGURATION ---
+        const map = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,1,0,0,0,0,0,1,0,0,3,1],
+            [1,0,1,0,1,0,1,1,1,0,1,0,1,1,1],
+            [1,0,1,0,0,0,1,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,1,0,1,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,1,0,0,0,1,0,1],
+            [1,1,1,0,1,1,1,1,1,0,1,0,1,0,1],
+            [1,0,0,0,1,0,0,0,0,0,1,0,0,0,1],
+            [1,0,1,1,1,0,1,1,1,1,1,1,1,0,1],
+            [1,0,0,0,1,0,0,0,1,0,0,0,1,0,1],
+            [1,1,1,0,1,1,1,0,1,0,1,0,1,0,1],
+            [1,2,1,0,0,0,1,0,0,0,1,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+        const UNIT_SIZE = 4;
+        let gameRunning = false;
+        let hasKey = false;
+
+        // --- THREE.JS SETUP ---
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x050505, 0.08);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas3d'), antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // --- DUNKLER HORROR-LOOK (Texturen via Canvas generiert) ---
+        function createWallTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#222'; ctx.fillRect(0,0,256,256);
+            ctx.fillStyle = '#151515';
+            for(let i=0; i<500; i++) ctx.fillRect(Math.random()*256, Math.random()*256, 4, 4);
+            return new THREE.CanvasTexture(canvas);
         }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        const wallTex = createWallTexture();
+        wallTex.wrapS = THREE.RepeatWrapping; wallTex.wrapT = THREE.RepeatWrapping;
+        wallTex.repeat.set(1, 1);
 
-        // Spielvariablen
-        let gameActive = false;
-        let score = 0;
-        let audioCtx = null;
+        const wallMat = new THREE.MeshLambertMaterial({ map: wallTex });
+        const floorMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+        const doorMat = new THREE.MeshLambertMaterial({ color: 0x8b0000 });
 
-        // Spieler (Überlebender)
-        const player = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
-            radius: 15,
-            speed: 4,
-            angle: 0
-        };
+        // --- WELT GENERIEREN ---
+        const walls = [];
+        let doorMesh, keyMesh;
+        let grannyMesh;
 
-        // Gegner (Geist)
-        const ghost = {
-            x: 100,
-            y: 100,
-            radius: 20,
-            speed: 2.2,
-            pulse: 0
-        };
+        const geo = new THREE.BoxGeometry(UNIT_SIZE, UNIT_SIZE, UNIT_SIZE);
 
-        // Zielobjekt (Seelenfragment)
-        const item = {
-            x: 0,
-            y: 0,
-            radius: 8
-        };
-
-        // Joystick Variablen
-        const joystick = document.getElementById('joystickContainer');
-        const knob = document.getElementById('joystickKnob');
-        let joystickActive = false;
-        let joystickStart = { x: 0, y: 0 };
-        let joystickMove = { x: 0, y: 0 };
-        let moveVector = { x: 0, y: 0 };
-
-        // Prozedurale Audio-Effekte (Keine externen MP3s nötig)
-        function initAudio() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            // Hintergrund-Drohnen-Sound
-            setInterval(() => {
-                if (!gameActive) return;
-                playDrone();
-            }, 1000);
-        }
-
-        function playDrone() {
-            let osc = audioCtx.createOscillator();
-            let gain = audioCtx.createGain();
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(40 + Math.random() * 5, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.9);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 1);
-        }
-
-        function playJumpscare() {
-            let osc = audioCtx.createOscillator();
-            let gain = audioCtx.createGain();
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(120, audioCtx.currentTime);
-            osc.frequency.linearRampToValueAtTime(30, audioCtx.currentTime + 1.5);
-            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 1.5);
+        for(let r=0; r<map.length; r++) {
+            for(let c=0; c<map[r].length; c++) {
+                let x = c * UNIT_SIZE - (map[r].length*UNIT_SIZE)/2;
+                let z = r * UNIT_SIZE - (map.length*UNIT_SIZE)/2;
+                
+                if(map[r][c] === 1) {
+                    const wall = new THREE.Mesh(geo, wallMat);
+                    wall.position.set(x, UNIT_SIZE/2, z);
+                    scene.add(wall);
+                    walls.push(wall);
+                } else if(map[r][c] === 2) { // Tür (Ziel)
+                    doorMesh = new THREE.Mesh(geo, doorMat);
+                    doorMesh.position.set(x, UNIT_SIZE/2, z);
+                    scene.add(doorMesh);
+                } else if(map[r][c] === 3) { // Schlüssel-Spawn
+                    const keyGeo = new THREE.BoxGeometry(0.5, 0.2, 1);
+                    const keyMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
+                    keyMesh = new THREE.Mesh(keyGeo, keyMat);
+                    keyMesh.position.set(x, 0.5, z);
+                    scene.add(keyMesh);
+                }
+            }
         }
 
-        function playCollectSound() {
-            let osc = audioCtx.createOscillator();
-            let gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.3);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.3);
-        }
+        // Boden & Decke
+        const floorGeo = new THREE.PlaneGeometry(100, 100);
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI/2;
+        scene.add(floor);
 
-        // Platziere Item zufällig
-        function spawnItem() {
-            item.x = Math.random() * (canvas.width - 60) + 30;
-            item.y = Math.random() * (canvas.height - 60) + 30;
-        }
+        const ceiling = new THREE.Mesh(floorGeo, new THREE.MeshLambertMaterial({color: 0x080808}));
+        ceiling.rotation.x = Math.PI/2;
+        ceiling.position.y = UNIT_SIZE;
+        scene.add(ceiling);
 
-        // Touch-Steuerung für den Joystick
-        joystick.addEventListener('touchstart', (e) => {
-            joystickActive = true;
-            const rect = joystick.getBoundingClientRect();
-            joystickStart = {
-                x: rect.left + rect.width / 2,
-                y: rect.top + rect.height / 2
-            };
+        // --- GRANNY (GEGNER) ERSTELLEN ---
+        const grannyGeo = new THREE.BoxGeometry(1.5, 3, 1.5);
+        const grannyMat = new THREE.MeshBasicMaterial({ color: 0x550000 }); // Unheimlich dunkles Rot
+        grannyMesh = new THREE.Mesh(grannyGeo, grannyMat);
+        grannyMesh.position.set(16, 1.5, 8); // Startposition weit weg
+        scene.add(grannyMesh);
+
+        // --- LICHT (Taschenlampe des Spielers) ---
+        const flashlight = new THREE.SpotLight(0xfff9e6, 2, 15, Math.PI/5, 0.5, 1);
+        scene.add(flashlight);
+        const ambientLight = new THREE.AmbientLight(0x0a0a14); // Sehr schwaches Grundlicht
+        scene.add(ambientLight);
+
+        // --- STEUERUNG (Pointer Lock & Keyboard) ---
+        camera.position.set(-16, 1.8, -12); // Startposition Spieler
+
+        const keys = { w:0, a:0, s:0, d:0 };
+        document.addEventListener('keydown', (e) => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = 1; });
+        document.addEventListener('keyup', (e) => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = 0; });
+
+        document.getElementById('startBtn').addEventListener('click', () => {
+            document.body.requestPointerLock();
         });
 
-        window.addEventListener('touchmove', (e) => {
-            if (!joystickActive) return;
-            const touch = e.touches[0];
+        document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement === document.body) {
+                document.getElementById('startScreen').classList.add('hidden');
+                gameRunning = true;
+            } else {
+                if(gameRunning) document.getElementById('startScreen').classList.remove('hidden');
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement !== document.body) return;
+            camera.rotation.y -= e.movementX * 0.0025;
+            camera.rotation.x -= e.movementY * 0.0025;
+            camera.rotation.x = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, camera.rotation.x));
+        });
+
+        // --- KOLLISIONSRECHNUNG ---
+        function checkCollision(pos, radius=0.8) {
+            for(let wall of walls) {
+                let bbox = new THREE.Box3().setFromObject(wall);
+                let playerBox = new THREE.Box3(
+                    new THREE.Vector3(pos.x - radius, 0, pos.z - radius),
+                    new THREE.Vector3(pos.x + radius, UNIT_SIZE, pos.z + radius)
+                );
+                if(bbox.intersectsBox(playerBox)) return true;
+            }
+            return false;
+        }
+
+        // --- GAME LOOP ---
+        const clock = new THREE.Clock();
+        const grannySpeed = 2.8;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!gameRunning) return;
+
+            const delta = clock.getDelta();
             
-            let dx = touch.clientX - joystickStart.x;
-            let dy = touch.clientY - joystickStart.y;
-            let distance = Math.sqrt(dx * dx + dy * dy);
-            let maxRadius = 40; // Maximaler Ausschlag des Knaufs
-
-            if (distance > maxRadius) {
-                dx = (dx / distance) * maxRadius;
-                dy = (dy / distance) * maxRadius;
-                distance = maxRadius;
-            }
-
-            knob.style.transform = `translate(${dx}px, ${dy}px)`;
-
-            // Berechne Bewegungs-Vektor (-1 bis 1)
-            moveVector.x = dx / maxRadius;
-            moveVector.y = dy / maxRadius;
-
-            // Drehwinkel des Spielers anpassen
-            if (distance > 5) {
-                player.angle = Math.atan2(dy, dx);
-            }
-        });
-
-        window.addEventListener('touchend', () => {
-            joystickActive = false;
-            knob.style.transform = 'translate(0px, 0px)';
-            moveVector = { x: 0, y: 0 };
-        });
-
-        // Tastatur-Fallback für PC-Tests
-        const keys = {};
-        window.addEventListener('keydown', (e) => keys[e.key] = true);
-        window.addEventListener('keyup', (e) => keys[e.key] = false);
-
-        function handleKeyboardInput() {
-            let kx = 0; let ky = 0;
-            if (keys['ArrowUp'] || keys['w']) ky = -1;
-            if (keys['ArrowDown'] || keys['s']) ky = 1;
-            if (keys['ArrowLeft'] || keys['a']) kx = -1;
-            if (keys['ArrowRight'] || keys['d']) kx = 1;
             
-            if (kx !== 0 || ky !== 0) {
-                moveVector.x = kx;
-                moveVector.y = ky;
-                player.angle = Math.atan2(ky, kx);
-            } else if (!joystickActive) {
-                moveVector.x = 0;
-                moveVector.y = 0;
-            }
+            let moveSpeed = 4.5 * delta;
+            let dir = new THREE.Vector3();
+            
+            if(keys.w) dir.z -= 1;
+            if(keys.s) dir.z += 1;
+            if(keys.a) dir.x -= 1;
+            if(keys.d) dir.x += 1;
+            dir.normalize();
+            
+            // In Blickrichtung bewegen
+// --- Globale Hilfsvektoren (einmalig außerhalb erstellt für bessere Performance) ---
+const camDir = new THREE.Vector3();
+const camRight = new THREE.Vector3();
+const moveVector = new THREE.Vector3();
+const targetPos = new THREE.Vector3();
+const grannyDir = new THREE.Vector3();
+const clock = new THREE.Clock();
+const grannySpeed = 2.8;
+
+// --- DIE ANIMATIONS-SCHLEIFE (Muss alles umschließen) ---
+function animate() {
+    requestAnimationFrame(animate);
+    
+    // Stoppe die Logik, falls das Spiel pausiert oder vorbei ist
+    if (!gameRunning) return;
+
+    const delta = clock.getDelta();
+    
+    // 1. Spieler-Bewegung & Kollision
+    let moveSpeed = 4.5 * delta;
+    let dir = new THREE.Vector3();
+    
+    if(keys.w) dir.z -= 1;
+    if(keys.s) dir.z += 1;
+    if(keys.a) dir.x -= 1;
+    if(keys.d) dir.x += 1;
+    dir.normalize();
+    
+    // Blickrichtung der Kamera bestimmen
+    camera.getWorldDirection(camDir);
+    camDir.y = 0; 
+    camDir.normalize();
+    
+    // Seitwärtsbewegung (Rechter Vektor zur Blickrichtung)
+    camRight.set(-camDir.z, 0, camDir.x);
+
+    // Bewegungsvektor final berechnen
+    moveVector.set(0, 0, 0)
+        .addScaledVector(camDir, -dir.z * moveSpeed)
+        .addScaledVector(camRight, dir.x * moveSpeed);
+
+    // X-Achsen-Bewegung prüfen
+    camera.position.x += moveVector.x;
+    if(checkCollision(camera.position)) camera.position.x -= moveVector.x;
+    
+    // Z-Achsen-Bewegung prüfen
+    camera.position.z += moveVector.z;
+    if(checkCollision(camera.position)) camera.position.z -= moveVector.z;
+
+    // Taschenlampe exakt an die Kamera heften
+    flashlight.position.copy(camera.position);
+    camera.getWorldDirection(targetPos);
+    flashlight.target.position.copy(camera.position).add(targetPos);
+    flashlight.target.updateMatrixWorld();
+
+    // 2. Gegenstände sammeln & Interaktion
+    if(!hasKey && keyMesh && camera.position.distanceTo(keyMesh.position) < 1.5) {
+        hasKey = true;
+        scene.remove(keyMesh);
+        document.getElementById('ui').innerHTML = "Schlüssel gefunden! Such den Ausgang (Rote Wand)!";
+        document.getElementById('ui').style.color = "#00ff00";
+    }
+
+    if(doorMesh && camera.position.distanceTo(doorMesh.position) < 2.2) {
+        if(hasKey) {
+            gameRunning = false;
+            document.exitPointerLock();
+            document.getElementById('winScreen').classList.remove('hidden');
+        } else {
+            document.getElementById('ui').innerHTML = "Ausgang verschlossen! Du brauchst den Schlüssel!";
+            document.getElementById('ui').style.color = "#ff3333";
         }
+    }
 
-        // Start-Button Klick
-        startButton.addEventListener('click', () => {
-            if (!audioCtx) initAudio();
-            startScreen.style.display = 'none';
-            resetGame();
-        });
+    // 3. Gegner-KI: Granny berechnen und bewegen
+    grannyDir.subVectors(camera.position, grannyMesh.position);
+    grannyDir.y = 0;
+    grannyDir.normalize();
+    grannyMesh.position.addScaledVector(grannyDir, grannySpeed * delta);
+    grannyMesh.lookAt(camera.position.x, grannyMesh.position.y, camera.position.z);
 
-        function resetGame() {
-            score = 0;
-            scoreDisplay.innerText = "Fragmente: " + score;
-            player.x = canvas.width / 2;
-            player.y = canvas.height / 2;
-            ghost.x = 50;
-            ghost.y = 50;
-            spawnItem();
-            gameActive = true;
-        }
+    // Pulsierender Atmeffekt
+    grannyMesh.scale.y = 1 + Math.sin(Date.now() * 0.01) * 0.05;
 
-        function gameOver() {
-            gameActive = false;
-            playJumpscare();
-            startScreen.style.display = 'flex';
+    // Jumpscare-Trigger bei zu geringem Abstand
+    if(camera.position.distanceTo(grannyMesh.position) < 1.5) {
+        gameRunning = false;
+        document.getElementById('flash').style.opacity = 1; 
+        setTimeout(() => {
+            document.exitPointerLock();
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }, 300);
+    }
+
+    // Das fertige Bild auf den Bildschirm zeichnen
+    renderer.render(scene, camera);
+}
+
+// Fenstergröße dynamisch anpassen
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Spielstart-Trigger
+animate();
