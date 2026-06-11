@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Freche Gans</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#1e1e1e;font-family:sans-serif}
+canvas{display:block;width:100vw;height:100vh}
+#ui{position:fixed;inset:0;pointer-events:none;color:#fff}
+.panel{position:absolute;left:10px;top:10px;background:#0008;padding:8px;border-radius:10px}
+#fps{position:absolute;right:10px;top:10px;background:#0008;padding:6px;border-radius:8px}
+#pause{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#000a}
+#pause div{background:#222;padding:20px;border-radius:12px}
+button{pointer-events:auto}
+.touch{position:absolute;bottom:15px}
+#joy{left:15px;width:140px;height:140px;border-radius:50%;background:#ffffff22;pointer-events:auto}
+.btns{right:15px;display:grid;grid-template-columns:repeat(2,70px);gap:10px}
+.tbtn{width:70px;height:70px;border-radius:50%;background:#ffffff33;color:#fff;border:none}
+.done{text-decoration:line-through;color:#8f8}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+<div class="panel"><div id="tasks"></div><button onclick="location.reload()">Neustart</button></div>
+<div id="fps"></div>
+<div id="pause"><div><h2>Pause</h2><button onclick="game.paused=false;pause.style.display='none'">Weiter</button></div></div>
+<div id="joy" class="touch"></div>
+<div class="btns touch">
+<button class="tbtn" id="horn">Hup</button><button class="tbtn" id="run">Run</button>
+<button class="tbtn" id="pick">Grab</button><button class="tbtn" id="drop">Drop</button>
+</div>
+</div>
+<script>
+const cv=c,ctx=cv.getContext('2d'); function rs(){cv.width=innerWidth;cv.height=innerHeight}onresize=rs;rs();
+class Camera{constructor(){this.x=0;this.y=0}}
+class Item{constructor(n,x,y,c){Object.assign(this,{name:n,x,y,c,held:false})}}
+class NPC{
+ constructor(x,y){this.x=x;this.y=y;this.tx=x+Math.random()*200-100;this.ty=y+Math.random()*200-100;this.scared=0;this.msg=""}
+ update(dt,g){
+   let sp=this.scared?80:40;
+   if(this.scared){let dx=this.x-g.x,dy=this.y-g.y,d=Math.hypot(dx,dy)||1;this.x+=dx/d*sp*dt;this.y+=dy/d*sp*dt;this.msg="Aaah!";this.scared-=dt;}
+   else{let dx=this.tx-this.x,dy=this.ty-this.y;if(Math.hypot(dx,dy)<10){this.tx=this.x+Math.random()*300-150;this.ty=this.y+Math.random()*300-150}
+   let d=Math.hypot(dx,dy)||1;this.x+=dx/d*sp*dt;this.y+=dy/d*sp*dt;this.msg=""}
+ }
+}
+class Goose{
+ constructor(){this.x=200;this.y=200;this.hold=null}
+ update(dt,input){let s=input.run?180:110;this.x+=input.x*s*dt;this.y+=input.y*s*dt}
+}
+class Joystick{constructor(){this.x=0;this.y=0;}}
+class Game{
+ constructor(){
+  this.cam=new Camera();this.goose=new Goose();this.joy=new Joystick();this.paused=false;
+  this.items=[new Item("Hut",600,260,"#964"),new Item("Apfel",300,500,"red"),new Item("Glocke",700,500,"gold"),new Item("Schlüssel",850,250,"yellow"),new Item("Blume",450,350,"pink")];
+  this.npcs=[new NPC(500,200),new NPC(650,380),new NPC(250,700)];
+  this.tasks={hut:false,bell:false,scare:false,apple:false,key:false};this.scared=0;
+  this.input={x:0,y:0,run:false}; this.audio=new (window.AudioContext||window.webkitAudioContext)();
+ }
+ beep(f){let o=this.audio.createOscillator(),g=this.audio.createGain();o.frequency.value=f;o.connect(g);g.connect(this.audio.destination);g.gain.value=.05;o.start();o.stop(this.audio.currentTime+.08)}
+ horn(){this.beep(280);for(let n of this.npcs) if(Math.hypot(n.x-this.goose.x,n.y-this.goose.y)<150){n.scared=2;this.scared++;}}
+ pickup(){
+   let it=this.items.find(i=>!i.held&&Math.hypot(i.x-this.goose.x,i.y-this.goose.y)<35);
+   if(it&&!this.goose.hold){it.held=true;this.goose.hold=it;this.beep(700);if(it.name=="Hut")this.tasks.hut=true;if(it.name=="Apfel")this.tasks.apple=true;}
+ }
+ drop(){if(this.goose.hold){let i=this.goose.hold;i.held=false;i.x=this.goose.x+20;i.y=this.goose.y;this.goose.hold=null;
+   if(i.name=="Glocke"&&i.x>900&&i.y>500)this.tasks.bell=true;
+   if(i.name=="Schlüssel"&&i.x<150&&i.y>650)this.tasks.key=true;
+ }}
+ update(dt){
+  this.goose.update(dt,this.input);
+  if(this.goose.hold){this.goose.hold.x=this.goose.x;this.goose.hold.y=this.goose.y-20}
+  this.npcs.forEach(n=>n.update(dt,this.goose));
+  if(this.scared>=3)this.tasks.scare=true;
+  this.cam.x=this.goose.x-cv.width/2; this.cam.y=this.goose.y-cv.height/2;
+ }
+ draw(){
+  let t=Date.now()*0.00005,day=(Math.sin(t)+1)/2;
+  ctx.fillStyle=`rgba(${30+120*day},${80+120*day},${40+100*day},1)`;ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.save();ctx.translate(-this.cam.x,-this.cam.y);
+  ctx.fillStyle="#6cb";ctx.fillRect(900,500,180,130);
+  ctx.fillStyle="#caa";ctx.fillRect(500,300,220,120);
+  for(let x=0;x<1200;x+=80){ctx.fillStyle="#7a5";ctx.fillRect(x,0,10,800)}
+  this.items.forEach(i=>{ctx.fillStyle=i.c;ctx.beginPath();ctx.arc(i.x,i.y,10,0,7);ctx.fill()});
+  this.npcs.forEach(n=>{ctx.fillStyle="#36f";ctx.beginPath();ctx.arc(n.x,n.y,14,0,7);ctx.fill(); if(n.msg){ctx.fillStyle="#fff";ctx.fillText(n.msg,n.x-10,n.y-20)}});
+  ctx.fillStyle="#fff";ctx.beginPath();ctx.ellipse(this.goose.x,this.goose.y,18,12,0,0,7);ctx.fill();
+  ctx.restore();
+  tasks.innerHTML=[
+   ["Stehle den Hut",this.tasks.hut],["Lege die Glocke in den Teich",this.tasks.bell],
+   ["Erschrecke drei Dorfbewohner",this.tasks.scare],["Sammle einen Apfel",this.tasks.apple],
+   ["Verstecke den Schlüssel",this.tasks.key]
+  ].map(v=>`<div class="${v[1]?'done':''}">✓ ${v[0]}</div>`).join("");
+ }
+}
+const game=new Game(); window.game=game;
+let keys={}; onkeydown=e=>{keys[e.key.toLowerCase()]=1;if(e.key=="h")game.horn();if(e.key=="e")game.pickup();if(e.key=="p"){pause.style.display='flex';game.paused=true}};
+onkeyup=e=>keys[e.key.toLowerCase()]=0;
+function controls(){
+ game.input.x=(keys.d?1:0)-(keys.a?1:0);
+ game.input.y=(keys.s?1:0)-(keys.w?1:0);
+ game.input.run=keys.Shift||keys.shift;
+}
+horn.onclick=()=>game.horn(); pick.onclick=()=>game.pickup(); drop.onclick=()=>game.drop();
+run.onpointerdown=()=>game.input.run=true; run.onpointerup=()=>game.input.run=false;
+let rect,sx,sy; joy.onpointerdown=e=>{rect=joy.getBoundingClientRect();sx=rect.left+70;sy=rect.top+70;mv(e)}
+joy.onpointermove=e=>{if(e.buttons)mv(e)}
+joy.onpointerup=e=>{game.input.x=game.input.y=0}
+function mv(e){let dx=(e.clientX-sx)/50,dy=(e.clientY-sy)/50,d=Math.hypot(dx,dy);if(d>1){dx/=d;dy/=d}game.input.x=dx;game.input.y=dy}
+let last=performance.now(),fps=0;
+function loop(now){let dt=(now-last)/1000;last=now;fps=1/dt;controls(); if(!game.paused)game.update(dt); game.draw(); fpsEl=document.getElementById('fps');fpsEl.textContent='FPS '+fps.toFixed(0); requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+</script>
+</body></html>
